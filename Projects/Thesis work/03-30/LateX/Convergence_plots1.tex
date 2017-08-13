@@ -1,0 +1,124 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1.33in]{geometry}
+\usepackage[numbered,framed]{mcode}
+\usepackage{graphicx}
+\graphicspath{ {/Users/admin/Downloads/} }
+\newcommand{\HRule}{\rule{\linewidth}{0.2mm}}
+\newcommand{\Hrule}{\rule{\linewidth}{0.1mm}}
+
+\makeatletter% since there's an at-sign (@) in the command name
+\renewcommand{\@maketitle}{%
+  \parindent=0pt% don't indent paragraphs in the title block
+  \centering
+  {\scshape \LARGE \@title}
+  \HRule\par%
+ \textit{\@author \hfill \@date}
+  \par
+}
+\makeatother% resets the meaning of the at-sign (@)
+
+\title{Investigating empirical convergence of the finite difference method for solving differential equations}
+\author{Milosz Bolibrzuch}
+
+
+\begin{document}
+  \maketitle% prints the title block
+  \vspace{0.6cm}
+  
+\section{Estimating convergence with known real value}
+For this section, I will use the example of the equation $y'=xy$ and try to assess the convergence of the finite difference method through numerically estimating the solution to this equation. I use the following MATLAB code to do so:
+\begin{lstlisting}
+% 03-30:
+% 
+% This version of the solver focuses on estimating the convergence of a
+% problem with a known solution, specifically y' = xy, y(0)=1. It
+% accomplishes the following:
+% 1. Plots the estimated solution of the equation.
+% 2. Plots the convergence in the conventional, easy to read, logarithmic
+% scale, for both the (forward difference NOTE: I'm still unsure about
+% what to call the methods exactly) and (central difference). Analytic
+% calculations indicate that the first method should have the order of
+% convergence one, and the second order of convergence two.
+% 3. Checks the empirical order of convergence with polyfit MATLAB
+% function.
+
+close all
+clear all
+n = 2;
+max_m = 13;
+m = 1;
+error = zeros(1,max_m);
+error1 = zeros(1,max_m);
+
+while m <= max_m
+    n = 2.^m;  
+    h = 1/n;
+    H(m) = h;
+    y = zeros(1,n+2);
+    x = zeros(1,n+2);
+    real = zeros(1,n+2);
+    y(1) = 1;
+%     y(2) = exp(h.^2/2);
+% We can use the result of the worse algorithm with one step as a
+% second initial value. We can also use the derivative at the initial value
+% to estimate the second value.
+    y(2) = 1;
+    x(1) = 1;
+    x(2) = y(2);
+    real(1) = 1;
+    real(2) = y(2);
+    for i = 1:n-2
+        x(i+2) = x(i+1) + h*(i+1)*h*x(i+1);
+        y(i+2) = y(i) + 2*y(i+1)*h*h*(i+1);
+        real(i+2) = exp((((i+2)*h).^2)/2);
+    end
+    error1(m) = max(abs(x-real));
+    error(m) = max(abs(y-real));
+    m = m+1;
+end
+% 
+% semilogy(error)
+% hold on
+% semilogy(error1)
+% legend('Better', 'Worse');
+% Check SUBPLOTS
+% plot(y(1:n-2))
+% hold on
+% plot(real)
+% Check for y'(x) = sin(xy) + y
+% y(0) = 1
+% Plot against exp(x^2/2-x), exp(x)
+% This below is for conventional form
+% Hflip = fliplr(H);
+% errorflip = fliplr(error);
+% errorflip1 = fliplr(error1);
+% % plot(log2(Hflip), log2(errorflip))
+% % hold on
+% % plot(log2(Hflip), log2(errorflip1))
+% % legend('Better' , 'Worse');
+% % Plot a straight line to see if its perfectly straight
+% Q = polyfit(log2(Hflip(1:12)), log2(errorflip(1:12)),1)
+% R = polyfit(log2(Hflip(1:12)), log2(errorflip1(1:12)),1)
+\end{lstlisting}
+This is using the following relationship: $$f'(x) = \frac{f(x+h)-f(x-h)}{2h}+O(h^2).$$ As the above equation suggests, we know from basic analytic calculations that the convergence of this method should be of second order. 
+First I will plot simply the error relation based on the number of iterations. 
+
+\begin{figure}[h]
+\caption{Convergence of error based on the amount of iterations}
+\includegraphics[scale = 0.35]{thesis1pic}
+\end{figure}
+
+\newline Then I try to plot the same relationship in the loglog scale.
+
+\begin{figure}[h]
+\caption{Convergence of error based on the amount of iterations}
+\includegraphics[scale = 0.35]{thesis1pic2}
+
+\newline At this point, I am working to figure out why it isn't a straight line and how to adjust my method to make it a straight line. I am considering the fact that this is just iterating through n (amount of steps). Perhaps iterating through h (step size) could be a solution. I'm trying to adjust my code for that.
+\section{Unknown solution}
+The next step is to do the same (investigate convergence), but without assuming the knowledge of a solution. There are two main ways to proceed:
+\newline 1. Compute a single reference value with a very small step size h and then proceed as if that reference value was a solution.
+\newline 2. Look at the ratios of differences between approximations, usually for consecutively halved step size. It would be a series of elements looking roughly like the ratio below.
+$$ \frac{u_{h}-u_{h/2}}{u_{h/2}-u_{h/4}}$$
+\end{figure}
+\end{document}
